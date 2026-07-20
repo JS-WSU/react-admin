@@ -100,7 +100,7 @@ export const AutocompleteInput = <
         fieldState: fieldStateOverride,
         filterToQuery: filterToQueryProp = DefaultFilterToQuery,
         formState: formStateOverride,
-        multiple = false,
+        multiple = false as unknown as Multiple,
         noOptionsText,
         offline = defaultOffline,
         onBlur,
@@ -182,7 +182,7 @@ export const AutocompleteInput = <
                 ? allChoices
                 : [
                       {
-                          [optionValue || 'id']: emptyValue,
+                          [String(optionValue || 'id')]: emptyValue,
                           [typeof optionText === 'string'
                               ? optionText
                               : 'name']: translate(emptyText, {
@@ -367,7 +367,7 @@ If you provided a React element for the optionText prop, you must also provide t
                 ) as ReactNode;
             }
 
-            if (!isListItem && option[optionValue || 'id'] === emptyValue) {
+            if (!isListItem && option[String(optionValue || 'id')] === emptyValue) {
                 return get(
                     option,
                     typeof optionText === 'string' ? optionText : 'name'
@@ -393,8 +393,11 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const getOptionLabelString = useCallback(
         (option: OptionType | string | null | undefined, isListItem: boolean = false): string => {
+            if (!option) return '';
             const optionLabel = getOptionLabel(option, isListItem);
-            return typeof optionLabel === 'string' ? optionLabel : String(optionLabel ?? '');
+            if (typeof optionLabel === 'string') return optionLabel;
+            if (typeof optionLabel === 'number' || typeof optionLabel === 'boolean') return String(optionLabel);
+            return '';
         },
         [getOptionLabel]
     );
@@ -402,9 +405,9 @@ If you provided a React element for the optionText prop, you must also provide t
     const finalOnBlur = useCallback(
         (event: React.FocusEvent<HTMLInputElement>): void => {
             if (clearOnBlur && !multiple) {
-                const optionLabel = getOptionLabel(selectedChoice as OptionType);
+                const optionLabel = getOptionLabelString(selectedChoice as OptionType);
                 if (!isEqual(optionLabel, filterValue)) {
-                    setFilterValue(typeof optionLabel === 'string' ? optionLabel : '');
+                    setFilterValue(optionLabel);
                     debouncedSetFilter('');
                 }
             }
@@ -413,7 +416,7 @@ If you provided a React element for the optionText prop, you must also provide t
         [
             clearOnBlur,
             field,
-            getOptionLabel,
+            getOptionLabelString,
             selectedChoice,
             filterValue,
             debouncedSetFilter,
@@ -439,7 +442,7 @@ If you provided a React element for the optionText prop, you must also provide t
             let selectedItemTexts;
 
             if (multiple) {
-                selectedItemTexts = (selectedChoice as OptionType[]).map(item =>
+                selectedItemTexts = ((selectedChoice as OptionType[]) || []).map(item =>
                     getOptionLabelString(item)
                 );
             } else {
@@ -477,11 +480,7 @@ If you provided a React element for the optionText prop, you must also provide t
             setFilterValue('');
             debouncedSetFilter('');
         }
-        if (
-            reason === 'reset' &&
-            event !== null &&
-            doesQueryMatchSelection(newInputValue)
-        ) {
+        if (reason === 'reset') {
             setFilterValue(newInputValue);
             debouncedSetFilter('');
         }
@@ -600,7 +599,7 @@ If you provided a React element for the optionText prop, you must also provide t
                 getOptionLabel={getOptionLabelString}
                 getOptionDisabled={getOptionDisabled}
                 id={id}
-                inputValue={filterValue} // <-- Fix: Controlling the input value stops Autocomplete from aggressively clearing it on blur.
+                inputValue={filterValue}
                 isOptionEqualToValue={isOptionEqualToValue}
                 loading={
                     (isPendingProp && !isFetchingProp) ||
@@ -610,7 +609,7 @@ If you provided a React element for the optionText prop, you must also provide t
                         oneSecondHasPassed)
                 }
                 loadingText={translate(loadingText, { _: loadingText })}
-                multiple={multiple as any} // <-- Fix: Resolves the generic `boolean` strictness issue.
+                multiple={multiple}
                 noOptionsText={
                     noOptionsText === undefined ? (
                         translate('ra.navigation.no_results')
@@ -677,7 +676,7 @@ If you provided a React element for the optionText prop, you must also provide t
                         <li
                             key={key}
                             {...restOptionProps}
-                            style={isCreateOption ? { fontStyle: 'italic' } : undefined} // <-- Fix: Guarantees styling regardless of Portal detachment.
+                            style={isCreateOption ? { fontStyle: 'italic' } : undefined}
                             className={clsx(
                                 restOptionProps.className,
                                 isCreateOption && AutocompleteInputClasses.createOption
@@ -711,7 +710,7 @@ export type AutocompleteInputProps<
     Multiple extends boolean | undefined = false,
     DisableClearable extends boolean | undefined = false,
     SupportCreate extends boolean | undefined = false,
-> = Omit<CommonInputProps, 'onChange' | 'defaultValue'> & // <-- Fix: Removed 'source' from Omit
+> = Omit<CommonInputProps, 'onChange' | 'defaultValue'> &
     Omit<ChoicesProps, 'disableValue'> &
     UseSuggestionsOptions &
     Omit<SupportCreateSuggestionOptions, 'handleChange' | 'optionText'> &
@@ -724,7 +723,7 @@ export type AutocompleteInputProps<
         >,
         'onChange' | 'options' | 'renderInput' | 'defaultValue' | 'multiple'
     > & {
-        offline?: boolean | React.ReactElement; // <-- Fix: explicitly typing 'offline'
+        offline?: boolean | React.ReactElement;
         defaultValue?: Multiple extends true ? OptionType[] : OptionType;
         debounce?: number;
         emptyText?: string;
@@ -749,9 +748,7 @@ export const AutocompleteInputClasses = {
 const StyledAutocomplete = styled(Autocomplete, {
     name: PREFIX,
     overridesResolver: (props, styles) => styles.root,
-})(({ theme }: { theme: Theme }) => ({
-    // Retained for standard scoping, but fallback handled in inline renderOption
-})) as typeof Autocomplete;
+})(({ theme }: { theme: Theme }) => ({})) as typeof Autocomplete;
 
 function areSelectedItemsEqual(
     selectedItem: any,
@@ -804,13 +801,16 @@ const useSelectedChoice = <
         if (!choices) {
             return;
         }
+        
+        const safeOptionValue = String(optionValue ?? 'id');
         let newSelectedItem: OptionType | OptionType[] | null;
+        
         if (multiple) {
             newSelectedItem = (Array.isArray(value) ? value : [])
                 .map(val =>
                     choices.find(
                         choice =>
-                            get(choice, optionValue as string) === val
+                            get(choice, safeOptionValue) === val
                     )
                 )
                 .filter(val => val !== undefined) as OptionType[];
@@ -818,14 +818,14 @@ const useSelectedChoice = <
             newSelectedItem =
                 choices.find(
                     choice =>
-                        get(choice, optionValue as string) === value
+                        get(choice, safeOptionValue) === value
                 ) || null;
         }
         if (
             !areSelectedItemsEqual(
                 selectedChoice,
                 newSelectedItem,
-                optionValue as string
+                safeOptionValue
             )
         ) {
             setSelectedChoice(newSelectedItem);
