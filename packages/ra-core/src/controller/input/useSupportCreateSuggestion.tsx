@@ -1,169 +1,154 @@
 import * as React from 'react';
 import {
-    ChangeEvent,
-    createContext,
+    cloneElement,
     isValidElement,
-    ReactElement,
-    useContext,
-    useRef,
+    type ReactElement,
+    useCallback,
+    useMemo,
     useState,
 } from 'react';
-import { Identifier } from '../../types';
-import { OptionText } from '../../form/choices/useChoices';
-import { useTranslate } from '../../i18n/useTranslate';
-import set from 'lodash/set.js';
+import { useTranslate } from '../i18n';
+import type { RaRecord } from '../types';
+import type { UseSupportCreateValue } from './useSupportCreateValue';
 
+/**
+ * This hook provides support for suggestion creation in inputs which have suggestions.
+ *
+ * @param {SupportCreateSuggestionOptions} options
+ * @param {ReactElement | boolean} options.create A react element which will be rendered when users leave the input with a non-empty value.
+ * @param {string} options.createLabel The label for the create option which is added to the suggestions when users typed a value that doesn't match an existing suggestion.
+ * @param {string | Function} options.createItemLabel The label for the actual item created. It is used as the label for the create option which is added to the suggestions when users typed a value that doesn't match an existing suggestion.
+ * @param {string} options.createValue The value for the create option which is added to the suggestions when users typed a value that doesn't match an existing suggestion.
+ * @param {string} options.createHintValue The value for the create hint option which is added to the suggestions when the create limit is not reached.
+ * @param {Function} options.handleChange A function to call when users selected a suggestion.
+ * @param {string} options.filter The current filter value.
+ * @param {Function} options.onCreate A function to call when users submit the creation form.
+ * @param {string} options.optionText The property to use to get the display value of a suggestion.
+ */
 export const useSupportCreateSuggestion = (
     options: SupportCreateSuggestionOptions
 ): UseSupportCreateValue => {
     const {
         create,
         createLabel = 'ra.action.create',
-        createItemLabel,
+        createItemLabel = 'ra.action.create_item',
         createValue = '@@ra-create',
         createHintValue = '@@ra-create-hint',
-        optionText = 'name',
-        filter,
         handleChange,
+        filter,
         onCreate,
+        optionText = 'name',
     } = options;
-
     const translate = useTranslate();
-    const [renderOnCreate, setRenderOnCreate] = useState(false);
-    const filterRef = useRef(filter);
+    const [renderDialog, setRenderDialog] = useState(false);
+    const [dialogFilter, setDialogFilter] = useState('');
+
+    const getCreateItem = useCallback(
+        (filterValue: string = '') => {
+            const createOptionLabel =
+                typeof createItemLabel === 'string'
+                    ? translate(createItemLabel, {
+                          item: filterValue,
+                          _: createItemLabel,
+                      })
+                    : createItemLabel(filterValue);
+            return {
+                id: createValue,
+                [typeof optionText === 'string' ? optionText : 'name']:
+                    createOptionLabel,
+            };
+        },
+        [createItemLabel, translate, createValue, optionText]
+    );
+
+    const getCreateHintItem = useCallback(() => {
+        return {
+            id: createHintValue,
+            [typeof optionText === 'string' ? optionText : 'name']:
+                translate(createLabel),
+        };
+    }, [createHintValue, createLabel, translate, optionText]);
+
+    const context = useMemo(
+        () => ({
+            filter: dialogFilter,
+            onCancel: () => {
+                setRenderDialog(false);
+                setDialogFilter('');
+            },
+            onCreate: (item: RaRecord) => {
+                setRenderDialog(false);
+                setDialogFilter('');
+                handleChange(item);
+            },
+        }),
+        [dialogFilter, handleChange]
+    );
 
     return {
-        createId: createValue,
-        createHintId: createHintValue,
-        getCreateItem: (filter?: string) => {
-            filterRef.current = filter;
+        getCreateItem,
+        handleChange: useCallback(
+            (itemOrEvent: any) => {
+                const item =
+                    itemOrEvent?.target?.value === undefined
+                        ? itemOrEvent
+                        : itemOrEvent.target.value;
 
-            return set(
-                {
-                    id:
-                        createItemLabel && !filter
-                            ? createHintValue
-                            : createValue,
-                },
-                typeof optionText === 'string' ? optionText : 'name',
-                filter && createItemLabel
-                    ? typeof createItemLabel === 'string'
-                        ? translate(createItemLabel, {
-                              item: filter,
-                              _: createItemLabel,
-                          })
-                        : createItemLabel(filter)
-                    : typeof createLabel === 'string'
-                      ? translate(createLabel, { _: createLabel })
-                      : createLabel
-            ) as { id: Identifier; [key: string]: unknown };
-        },
-        handleChange: async (
-            eventOrValue: ChangeEvent<HTMLInputElement> | unknown
-        ) => {
-            const value =
-                (eventOrValue as { target?: { value?: unknown } })?.target
-                    ?.value || eventOrValue;
-            const finalValue = Array.isArray(value) ? [...value].pop() : value;
-            const castFinalValue = finalValue as { id?: unknown } | unknown;
-
-            if (
-                (castFinalValue &&
-                    typeof castFinalValue === 'object' &&
-                    'id' in castFinalValue &&
-                    castFinalValue.id === createValue) ||
-                finalValue === createValue
-            ) {
-                if (!isValidElement(create)) {
-                    if (!onCreate) {
-                        throw new Error(
-                            'To create a new option, you must pass an onCreate function or a create element.'
-                        );
-                    }
-                    const newSuggestion = await onCreate(filter);
-                    if (newSuggestion) {
-                        handleChange(newSuggestion);
+                if (
+                    item?.id === createValue ||
+                    item === createValue ||
+                    item?.id === createHintValue ||
+                    item === createHintValue
+                ) {
+                    if (typeof onCreate === 'function') {
+                        onCreate(filter);
                         return;
                     }
-                } else {
-                    setRenderOnCreate(true);
-                    return;
+                    if (isValidElement(create)) {
+                        setDialogFilter(filter);
+                        setRenderDialog(true);
+                        return;
+                    }
                 }
-            }
-            handleChange(eventOrValue);
-        },
+                handleChange(itemOrEvent);
+            },
+            [
+                create,
+                createValue,
+                createHintValue,
+                filter,
+                handleChange,
+                onCreate,
+            ]
+        ),
         createElement:
-            renderOnCreate && isValidElement(create) ? (
-                <CreateSuggestionContext.Provider
-                    value={{
-                        filter: filterRef.current,
-                        onCancel: () => setRenderOnCreate(false),
-                        onCreate: item => {
-                            setRenderOnCreate(false);
-                            handleChange(item);
-                        },
-                    }}
-                >
-                    {create}
-                </CreateSuggestionContext.Provider>
-            ) : null,
-        getOptionDisabled: (option: unknown) => {
-            const optionCast = option as { id?: unknown } | unknown;
-            return (
+            renderDialog && isValidElement(create)
+                ? cloneElement(create, context as any)
+                : null,
+        createId: createValue,
+        createHintId: createHintValue,
+        getOptionDisabled: (option: unknown): boolean => {
+            const optionCast = option as { id?: unknown };
+            return Boolean(
                 (optionCast &&
                     typeof optionCast === 'object' &&
                     'id' in optionCast &&
                     optionCast.id === createHintValue) ||
-                option === createHintValue
+                    option === createHintValue
             );
         },
+        getCreateHintItem,
     };
 };
 
 export interface SupportCreateSuggestionOptions {
-    create?: ReactElement;
+    create?: ReactElement | boolean;
+    createLabel?: string;
+    createItemLabel?: string | ((filter: string) => React.ReactNode);
     createValue?: string;
     createHintValue?: string;
-    createLabel?: React.ReactNode;
-    createItemLabel?: string | ((filter: string) => React.ReactNode);
+    handleChange: (item: any) => void;
     filter?: string;
-    handleChange: (value: unknown) => void;
-    onCreate?: OnCreateHandler;
-    optionText?: OptionText;
+    onCreate?: (filter: string) => void;
+    optionText?: any;
 }
-
-export interface UseSupportCreateValue {
-    createId: string;
-    createHintId: string;
-    getCreateItem: (filterValue?: string) => {
-        id: Identifier;
-        [key: string]: unknown;
-    };
-    handleChange: (
-        eventOrValue: ChangeEvent<HTMLInputElement> | unknown
-    ) => Promise<void>;
-    createElement: ReactElement | null;
-    getOptionDisabled: (option: unknown) => boolean;
-}
-
-const CreateSuggestionContext = createContext<
-    CreateSuggestionContextValue | undefined
->(undefined);
-
-interface CreateSuggestionContextValue {
-    filter?: string;
-    onCreate: (choice: unknown) => void;
-    onCancel: () => void;
-}
-
-export const useCreateSuggestionContext = () => {
-    const context = useContext(CreateSuggestionContext);
-    if (!context) {
-        throw new Error(
-            'useCreateSuggestionContext must be used inside a CreateSuggestionContext.Provider'
-        );
-    }
-    return context;
-};
-
-export type OnCreateHandler = (filter?: string) => unknown | Promise<unknown>;

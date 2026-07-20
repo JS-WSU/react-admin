@@ -191,8 +191,8 @@ export const AutocompleteInput = <
                               : 'name']: translate(emptyText, {
                               _: emptyText,
                           }),
-                      },
-                  ].concat(allChoices || []),
+                      } as OptionType,
+                  ].concat((allChoices as OptionType[]) || []),
         [
             allChoices,
             emptyValue,
@@ -211,8 +211,8 @@ export const AutocompleteInput = <
         DisableClearable,
         SupportCreate
     >(field.value, {
-        choices: finalChoices,
-        // @ts-ignore
+        choices: finalChoices as OptionType[],
+        // @ts-ignore multiple dynamic evaluation
         multiple,
         optionValue,
     });
@@ -375,7 +375,6 @@ If you provided a React element for the optionText prop, you must also provide t
                 return '';
             }
 
-            // Value selected with enter, right from the input
             if (typeof option === 'string') {
                 return option;
             }
@@ -410,10 +409,10 @@ If you provided a React element for the optionText prop, you must also provide t
             emptyValue,
         ]
     );
+
     const getOptionLabelString = useCallback(
         (option: OptionType | string, isListItem: boolean = false): string => {
             const optionLabel = getOptionLabel(option, isListItem);
-            // Can be a ReactNode when it's the create option.
             return typeof optionLabel === 'string' ? optionLabel : '';
         },
         [getOptionLabel]
@@ -422,7 +421,9 @@ If you provided a React element for the optionText prop, you must also provide t
     const finalOnBlur = useCallback(
         (event: React.FocusEvent<HTMLInputElement>): void => {
             if (clearOnBlur && !multiple) {
-                const optionLabel = getOptionLabel(selectedChoice);
+                const optionLabel = getOptionLabel(
+                    selectedChoice as OptionType
+                );
                 if (!isEqual(optionLabel, filterValue)) {
                     setFilterValue(
                         typeof optionLabel === 'string' ? optionLabel : ''
@@ -445,7 +446,7 @@ If you provided a React element for the optionText prop, you must also provide t
 
     useEffect(() => {
         if (!multiple) {
-            const optionLabel = getOptionLabel(selectedChoice);
+            const optionLabel = getOptionLabel(selectedChoice as OptionType);
             if (typeof optionLabel === 'string') {
                 setFilterValue(optionLabel);
             } else if (optionLabel !== undefined && optionLabel !== null) {
@@ -511,12 +512,12 @@ If you provided a React element for the optionText prop, you must also provide t
         },
         [getOptionLabelString, multiple, selectedChoice]
     );
+
     const doesQueryMatchSuggestion = useCallback(
         (filter: string) => {
             const hasOption = finalChoices
-                ? finalChoices.some(
-                      choice =>
-                          getOptionLabelString(choice as OptionType) === filter
+                ? (finalChoices as OptionType[]).some(
+                      choice => getOptionLabelString(choice) === filter
                   )
                 : false;
 
@@ -559,11 +560,14 @@ If you provided a React element for the optionText prop, you must also provide t
         ) => {
             event.preventDefault();
             if (reason === 'createOption') {
+                const valueToCreate = Array.isArray(newValue)
+                    ? newValue[newValue.length - 1]
+                    : newValue;
                 handleChangeWithCreateSupport(
                     getCreateItem(
-                        Array.isArray(newValue)
-                            ? newValue[newValue.length - 1]
-                            : newValue
+                        typeof valueToCreate === 'string'
+                            ? valueToCreate
+                            : undefined
                     )
                 );
                 return;
@@ -598,6 +602,7 @@ If you provided a React element for the optionText prop, you must also provide t
     const renderHelperText = !!fetchError || helperText !== false || invalid;
 
     const handleInputRef = useForkRef(field.ref, TextFieldProps?.inputRef);
+
     if (isPending && isPaused && offline !== false && offline !== undefined) {
         return offline;
     }
@@ -608,163 +613,144 @@ If you provided a React element for the optionText prop, you must also provide t
     ) =>
         value.map((option, index) => {
             const { key, ...chipProps } = getProps({ index });
-            const mergedSlotProps = props.slotProps?.chip
-                ? props.slotProps.chip
-                : props.ChipProps;
+
+            type SafeProps = {
+                slotProps?: { chip?: Record<string, unknown> };
+                ChipProps?: Record<string, unknown>;
+            };
+
+            const mergedSlotProps = (props as SafeProps).slotProps?.chip
+                ? (props as SafeProps).slotProps?.chip
+                : (props as SafeProps).ChipProps;
+
             return (
                 <Chip
-                    label={
-                        isValidElement(optionText)
-                            ? inputText
-                                ? inputText(option)
-                                : ''
-                            : getChoiceText(option)
-                    }
+                    key={key || index}
+                    label={getOptionLabel(option, true)}
                     size="small"
-                    key={key as React.Key}
                     {...chipProps}
                     {...mergedSlotProps}
                 />
             );
         });
 
-    const finalLoadingText =
-        typeof loadingText === 'string'
-            ? translate(loadingText, {
-                  _: loadingText,
-              })
-            : loadingText;
+    type SafeTextFieldProps = TextFieldProps & {
+        slotProps?: {
+            input?: Record<string, unknown>;
+            inputLabel?: Record<string, unknown>;
+            htmlInput?: Record<string, unknown>;
+        };
+    };
+    const tfProps = TextFieldProps as SafeTextFieldProps | undefined;
+
     return (
         <>
             <StyledAutocomplete
+                blurOnSelect={!multiple}
+                clearOnBlur={clearOnBlur}
                 className={clsx('ra-input', `ra-input-${source}`, className)}
                 clearText={translate(clearText, { _: clearText })}
                 closeText={translate(closeText, { _: closeText })}
-                loadingText={
-                    isPaused && isPlaceholderData
-                        ? offline !== false && offline !== undefined
-                            ? offline
-                            : finalLoadingText
-                        : finalLoadingText
-                }
-                openOnFocus
-                openText={translate(openText, { _: openText })}
+                disabled={disabled || readOnly}
+                disableCloseOnSelect={multiple}
+                filterOptions={filterOptions}
+                getOptionLabel={getOptionLabelString}
+                getOptionDisabled={getOptionDisabled}
                 id={id}
                 isOptionEqualToValue={isOptionEqualToValue}
-                filterSelectedOptions
-                disabled={disabled || readOnly}
+                loading={
+                    (isPendingProp && !isFetchingProp) ||
+                    (isPendingProp &&
+                        isFetchingProp &&
+                        !isPlaceholderData &&
+                        oneSecondHasPassed)
+                }
+                loadingText={translate(loadingText, { _: loadingText })}
+                multiple={multiple as Multiple}
+                noOptionsText={
+                    noOptionsText === undefined ? (
+                        translate('ra.navigation.no_results')
+                    ) : (
+                        <span>
+                            {translate(noOptionsText, { _: noOptionsText })}
+                        </span>
+                    )
+                }
+                onBlur={finalOnBlur}
+                onChange={
+                    handleAutocompleteChange as AutocompleteProps<
+                        OptionType,
+                        Multiple,
+                        DisableClearable,
+                        SupportCreate
+                    >['onChange']
+                }
+                onClose={handleClose}
+                onInputChange={handleInputChange}
+                onOpen={handleOpen}
+                open={isOpen && canRenderSuggestions}
+                openText={translate(openText, { _: openText })}
+                options={suggestions}
                 renderInput={params => {
-                    const mergedTextFieldProps = {
-                        readOnly,
-                        ...params.InputProps,
-                        ...TextFieldProps?.InputProps,
-                    };
-                    const mergedSlotProps = TextFieldProps?.slotProps
-                        ? {
-                              slotProps: {
-                                  ...TextFieldProps?.slotProps,
-                                  input: {
-                                      readOnly,
-                                      ...params.InputProps,
-                                      ...TextFieldProps?.slotProps?.input,
-                                  },
-                              },
-                          }
-                        : undefined;
+                    const inputProps =
+                        muiMajor >= 6 && tfProps?.slotProps?.input
+                            ? {
+                                  ...params.InputProps,
+                                  ...tfProps?.slotProps?.input,
+                              }
+                            : { ...params.InputProps, ...tfProps?.InputProps };
                     return (
                         <TextField
                             name={field.name}
                             label={
-                                label !== '' && label !== false ? (
+                                label !== '' &&
+                                label !== false && (
                                     <FieldTitle
                                         label={label}
                                         source={source}
-                                        resource={resourceProp}
+                                        resource={resource}
                                         isRequired={isRequired}
                                     />
-                                ) : null
+                                )
                             }
-                            error={!!fetchError || invalid}
-                            helperText={
-                                renderHelperText ? (
-                                    <InputHelperText
-                                        error={
-                                            error?.message ||
-                                            fetchError?.message
-                                        }
-                                        helperText={helperText}
-                                    />
-                                ) : null
-                            }
+                            error={invalid}
                             margin={margin}
                             variant={variant}
-                            className={clsx({
-                                [AutocompleteInputClasses.textField]: true,
-                                [AutocompleteInputClasses.emptyLabel]:
-                                    label === false || label === '',
-                            })}
                             {...params}
                             {...TextFieldProps}
-                            InputProps={mergedTextFieldProps}
-                            {...mergedSlotProps}
-                            size={size}
+                            {...(muiMajor >= 6
+                                ? {
+                                      slotProps: {
+                                          input: inputProps,
+                                          inputLabel:
+                                              tfProps?.slotProps?.inputLabel ||
+                                              tfProps?.InputLabelProps,
+                                          htmlInput:
+                                              tfProps?.slotProps?.htmlInput ||
+                                              tfProps?.inputProps,
+                                      },
+                                  }
+                                : {
+                                      InputProps: inputProps,
+                                      InputLabelProps: tfProps?.InputLabelProps,
+                                      inputProps: tfProps?.inputProps,
+                                  })}
                             inputRef={handleInputRef}
                         />
                     );
                 }}
-                multiple={multiple}
-                {...(muiMajor >= 7
-                    ? multiple
-                        ? { renderValue: renderChips }
-                        : {}
-                    : { renderTags: renderChips })}
-                noOptionsText={
-                    typeof noOptionsText === 'string'
-                        ? translate(noOptionsText, { _: noOptionsText })
-                        : noOptionsText
-                }
-                selectOnFocus
-                clearOnBlur={clearOnBlur}
-                {...sanitizeInputRestProps(rest)}
-                freeSolo={!!create || !!onCreate}
-                open={isOpen && canRenderSuggestions}
-                onOpen={handleOpen}
-                onClose={handleClose}
-                handleHomeEndKeys={!!create || !!onCreate}
-                filterOptions={filterOptions}
-                options={
-                    isPaused && isPlaceholderData
-                        ? []
-                        : canRenderSuggestions
-                          ? suggestions
-                          : []
-                }
-                getOptionKey={(option: OptionType) => option?.id as React.Key}
-                getOptionLabel={getOptionLabelString}
-                inputValue={filterValue}
-                loading={
-                    (isPending &&
-                        (!finalChoices || finalChoices.length === 0) &&
-                        oneSecondHasPassed) ||
-                    (isPaused && isPlaceholderData)
-                }
-                value={selectedChoice}
-                onChange={handleAutocompleteChange}
-                onBlur={finalOnBlur}
-                onInputChange={handleInputChange}
-                renderOption={(props, record: OptionType) => {
-                    const { key: ignoredKey, ...rest } = props;
-                    const key = getChoiceValue(record) as React.Key;
+                renderOption={(optionProps, record: OptionType) => {
+                    const { key: ignoredKey, ...restOptionProps } = optionProps;
+                    const key = getChoiceValue(record);
                     const optionLabel = getOptionLabel(record, true);
                     const isCreateOption =
                         record.id === createId || record.id === createHintId;
-
                     return (
                         <li
                             key={key}
-                            {...rest}
+                            {...restOptionProps}
                             className={clsx(
-                                rest.className,
+                                restOptionProps.className,
                                 isCreateOption &&
                                     AutocompleteInputClasses.createOption
                             )}
@@ -773,71 +759,97 @@ If you provided a React element for the optionText prop, you must also provide t
                         </li>
                     );
                 }}
-                getOptionDisabled={getOptionDisabled}
+                renderTags={renderChips}
+                value={selectedChoice as any}
+                {...sanitizeInputRestProps(rest)}
             />
             {createElement}
+            {renderHelperText ? (
+                <InputHelperText
+                    touched={invalid || undefined}
+                    error={
+                        invalid
+                            ? fetchError?.message ?? error?.message
+                            : undefined
+                    }
+                    helperText={helperText}
+                />
+            ) : null}
         </>
     );
 };
 
-const PREFIX = 'RaAutocompleteInput';
+export type AutocompleteInputProps<
+    OptionType extends RaRecord = RaRecord,
+    Multiple extends boolean | undefined = false,
+    DisableClearable extends boolean | undefined = false,
+    SupportCreate extends boolean | undefined = false,
+> = Omit<CommonInputProps, 'source' | 'onChange' | 'defaultValue'> &
+    Omit<ChoicesProps, 'disableValue'> &
+    UseSuggestionsOptions &
+    Omit<SupportCreateSuggestionOptions, 'handleChange' | 'optionText'> &
+    Omit<
+        AutocompleteProps<
+            OptionType,
+            Multiple,
+            DisableClearable,
+            SupportCreate
+        >,
+        'onChange' | 'options' | 'renderInput' | 'defaultValue' | 'multiple'
+    > & {
+        defaultValue?: Multiple extends true ? OptionType[] : OptionType;
+        debounce?: number;
+        emptyText?: string;
+        emptyValue?: any;
+        filterToQuery?: (searchText: string) => any;
+        inputText?: (option: OptionType) => string;
+        onChange?: (value: any) => void;
+        setFilter?: (value: string) => void;
+        shouldRenderSuggestions?: (filter: string) => boolean;
+        TextFieldProps?: TextFieldProps;
+        multiple?: Multiple;
+    };
 
+const DefaultFilterToQuery = (searchText: string) => ({ q: searchText });
+const defaultOffline = <Offline />;
+
+const PREFIX = 'RaAutocompleteInput';
 export const AutocompleteInputClasses = {
-    textField: `${PREFIX}-textField`,
-    emptyLabel: `${PREFIX}-emptyLabel`,
     createOption: `${PREFIX}-createOption`,
 };
 
 const StyledAutocomplete = styled(Autocomplete, {
     name: PREFIX,
     overridesResolver: (props, styles) => styles.root,
-})(({ theme }) => ({
-    [`& .${AutocompleteInputClasses.textField}`]: {
-        minWidth: theme.spacing(20),
-    },
-    [`& .${AutocompleteInputClasses.emptyLabel} .MuiOutlinedInput-root legend`]:
-        {
-            width: 0,
-        },
+})(({ theme }: { theme: Theme }) => ({
     [`& .${AutocompleteInputClasses.createOption}`]: {
         fontStyle: 'italic',
-        color: theme.palette.text.secondary,
     },
-}));
+})) as typeof Autocomplete;
 
-export interface AutocompleteInputProps<
-    OptionType extends RaRecord = RaRecord,
-    Multiple extends boolean | undefined = false,
-    DisableClearable extends boolean | undefined = false,
-    SupportCreate extends boolean | undefined = false,
-> extends Omit<CommonInputProps, 'source' | 'onChange'>,
-        Omit<ChoicesProps, 'disableValue'>,
-        UseSuggestionsOptions,
-        Omit<SupportCreateSuggestionOptions, 'handleChange' | 'optionText'>,
-        Omit<
-            AutocompleteProps<
-                OptionType,
-                Multiple,
-                DisableClearable,
-                SupportCreate
-            >,
-            'onChange' | 'options' | 'renderInput'
-        > {
-    children?: ReactNode;
-    debounce?: number;
-    emptyText?: string;
-    emptyValue?: unknown;
-    filterToQuery?: (searchText: string) => Record<string, unknown>;
-    inputText?: (option: OptionType) => string;
-    offline?: ReactNode;
-    onChange?: (
-        value: Multiple extends true ? OptionType[] : OptionType,
-        record: Multiple extends true ? OptionType[] : OptionType | ''
-    ) => void;
-    setFilter?: (value: string) => void;
-    shouldRenderSuggestions?: (filter: string) => boolean;
-    source?: string;
-    TextFieldProps?: TextFieldProps;
+function areSelectedItemsEqual(
+    selectedItem: any,
+    newSelectedItem: any,
+    optionValue: string
+) {
+    const selectedChoiceArray = Array.isArray(selectedItem)
+        ? selectedItem
+        : [selectedItem];
+
+    const newSelectedChoiceArray = Array.isArray(newSelectedItem)
+        ? newSelectedItem
+        : [newSelectedItem];
+
+    if (selectedChoiceArray.length !== newSelectedChoiceArray.length) {
+        return false;
+    }
+    const equalityArray = selectedChoiceArray.map((choice: RaRecord) =>
+        newSelectedChoiceArray.some(
+            (newChoice: RaRecord) =>
+                get(newChoice, optionValue) === get(choice, optionValue)
+        )
+    );
+    return equalityArray.every(val => val);
 }
 
 const useSelectedChoice = <
@@ -857,102 +869,40 @@ const useSelectedChoice = <
         DisableClearable,
         SupportCreate
     >
-) => {
-    const selectedChoiceRef = useRef(
-        getSelectedItems(choices, value, optionValue, multiple)
-    );
-    const [selectedChoice, setSelectedChoice] = useState<RaRecord | RaRecord[]>(
-        () => getSelectedItems(choices, value, optionValue, multiple)
-    );
+): OptionType | OptionType[] | null => {
+    const [selectedChoice, setSelectedChoice] = useState<
+        OptionType | OptionType[] | null
+    >(multiple ? [] : null);
 
     useEffect(() => {
-        const newSelectedItems = getSelectedItems(
-            choices,
-            value,
-            optionValue,
-            multiple
-        );
-
+        if (!choices) {
+            return;
+        }
+        let newSelectedItem: OptionType | OptionType[] | null;
+        if (multiple) {
+            newSelectedItem = (Array.isArray(value) ? value : [])
+                .map(val =>
+                    choices.find(
+                        choice => get(choice, optionValue as string) === val
+                    )
+                )
+                .filter(val => val !== undefined) as OptionType[];
+        } else {
+            newSelectedItem =
+                choices.find(
+                    choice => get(choice, optionValue as string) === value
+                ) || null;
+        }
         if (
             !areSelectedItemsEqual(
-                selectedChoiceRef.current,
-                newSelectedItems,
-                optionValue,
-                multiple
+                selectedChoice,
+                newSelectedItem,
+                optionValue as string
             )
         ) {
-            selectedChoiceRef.current = newSelectedItems;
-            setSelectedChoice(newSelectedItems);
+            setSelectedChoice(newSelectedItem);
         }
-    }, [choices, value, multiple, optionValue]);
-    return selectedChoice || null;
+    }, [value, choices, optionValue, multiple, selectedChoice]);
+
+    return selectedChoice;
 };
-
-const getSelectedItems = (
-    choices: RaRecord[] = [],
-    value: unknown,
-    optionValue = 'id',
-    multiple?: boolean
-) => {
-    if (multiple) {
-        return (Array.isArray(value ?? []) ? value : [value])
-            .map(item =>
-                choices.find(
-                    choice => String(item) === String(get(choice, optionValue))
-                )
-            )
-            .filter(item => !!item);
-    }
-    return (
-        choices.find(
-            choice => String(get(choice, optionValue)) === String(value)
-        ) || ''
-    );
-};
-
-const areSelectedItemsEqual = (
-    selectedChoice: RaRecord | RaRecord[],
-    newSelectedChoice: RaRecord | RaRecord[],
-    optionValue = 'id',
-    multiple?: boolean
-) => {
-    if (multiple) {
-        const selectedChoiceArray = (selectedChoice as RaRecord[]) ?? [];
-        const newSelectedChoiceArray = (newSelectedChoice as RaRecord[]) ?? [];
-        if (selectedChoiceArray.length !== newSelectedChoiceArray.length) {
-            return false;
-        }
-        const equalityArray = selectedChoiceArray.map(choice =>
-            newSelectedChoiceArray.some(
-                newChoice =>
-                    get(newChoice, optionValue) === get(choice, optionValue)
-            )
-        );
-        return !equalityArray.some(item => item === false);
-    }
-    return (
-        get(selectedChoice, optionValue) === get(newSelectedChoice, optionValue)
-    );
-};
-
-const DefaultFilterToQuery = (searchText: string) => ({ q: searchText });
-const defaultOffline = <Offline variant="inline" />;
-
-declare module '@mui/material/styles' {
-    interface ComponentNameToClassKey {
-        RaAutocompleteInput: 'root' | 'textField' | 'createOption';
-    }
-
-    interface ComponentsPropsList {
-        RaAutocompleteInput: Partial<AutocompleteInputProps>;
-    }
-
-    interface Components {
-        RaAutocompleteInput?: {
-            defaultProps?: ComponentsPropsList['RaAutocompleteInput'];
-            styleOverrides?: ComponentsOverrides<
-                Omit<Theme, 'components'>
-            >['RaAutocompleteInput'];
-        };
-    }
-}
