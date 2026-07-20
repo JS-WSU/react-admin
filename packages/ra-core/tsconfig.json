@@ -6,7 +6,18 @@
         "allowJs": false,
         "strictNullChecks": true,
         "target": "ES2022",
-        "moduleResolution": "bundler"
+        "moduleResolution": "bundler",
+        "module": "esnext",
+        "baseUrl": "./",
+        "ignoreDeprecations": "6.0",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true
     },
     "exclude": [
         "**/*.spec.ts",

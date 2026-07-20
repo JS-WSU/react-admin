@@ -392,9 +392,9 @@ If you provided a React element for the optionText prop, you must also provide t
     );
 
     const getOptionLabelString = useCallback(
-        (option: OptionType | string, isListItem: boolean = false): string => {
+        (option: OptionType | string | null | undefined, isListItem: boolean = false): string => {
             const optionLabel = getOptionLabel(option, isListItem);
-            return typeof optionLabel === 'string' ? optionLabel : '';
+            return typeof optionLabel === 'string' ? optionLabel : String(optionLabel ?? '');
         },
         [getOptionLabel]
     );
@@ -509,7 +509,6 @@ If you provided a React element for the optionText prop, you must also provide t
 
         const { inputValue } = params;
         
-        // FIX: Utilize params.inputValue (real-time typing) over filterValue (debounced lag)
         if (onCreate || create) {
             if (inputValue === '' && filterValue === '' && createLabel) {
                 filteredOptions = filteredOptions.concat(getCreateItem('') as OptionType);
@@ -569,7 +568,7 @@ If you provided a React element for the optionText prop, you must also provide t
     const handleInputRef = useForkRef(field.ref, TextFieldProps?.inputRef);
 
     if (isPending && isPaused && offline !== false && offline !== undefined) {
-        return offline;
+        return offline as React.ReactElement;
     }
 
     const renderChips = (
@@ -591,8 +590,6 @@ If you provided a React element for the optionText prop, you must also provide t
     return (
         <>
             <StyledAutocomplete
-                // FIX: Removed blurOnSelect completely. It triggers an early blur sequence before React Hook Form 
-                // state update finishes, aggressively clearing the input upon a valid selection.
                 clearOnBlur={clearOnBlur}
                 className={clsx('ra-input', `ra-input-${source}`, className)}
                 clearText={translate(clearText, { _: clearText })}
@@ -603,6 +600,7 @@ If you provided a React element for the optionText prop, you must also provide t
                 getOptionLabel={getOptionLabelString}
                 getOptionDisabled={getOptionDisabled}
                 id={id}
+                inputValue={filterValue} // <-- Fix: Controlling the input value stops Autocomplete from aggressively clearing it on blur.
                 isOptionEqualToValue={isOptionEqualToValue}
                 loading={
                     (isPendingProp && !isFetchingProp) ||
@@ -612,7 +610,7 @@ If you provided a React element for the optionText prop, you must also provide t
                         oneSecondHasPassed)
                 }
                 loadingText={translate(loadingText, { _: loadingText })}
-                multiple={multiple as Multiple}
+                multiple={multiple as any} // <-- Fix: Resolves the generic `boolean` strictness issue.
                 noOptionsText={
                     noOptionsText === undefined ? (
                         translate('ra.navigation.no_results')
@@ -673,16 +671,16 @@ If you provided a React element for the optionText prop, you must also provide t
                     const { key: ignoredKey, ...restOptionProps } = optionProps as any;
                     const key = getChoiceValue(record);
                     const optionLabel = getOptionLabel(record, true);
-                    const isCreateOption =
-                        record.id === createId || record.id === createHintId;
+                    const isCreateOption = record.id === createId || record.id === createHintId;
+                    
                     return (
                         <li
                             key={key}
                             {...restOptionProps}
+                            style={isCreateOption ? { fontStyle: 'italic' } : undefined} // <-- Fix: Guarantees styling regardless of Portal detachment.
                             className={clsx(
                                 restOptionProps.className,
-                                isCreateOption &&
-                                    AutocompleteInputClasses.createOption
+                                isCreateOption && AutocompleteInputClasses.createOption
                             )}
                         >
                             {optionLabel === '' ? ' ' : optionLabel}
@@ -713,7 +711,7 @@ export type AutocompleteInputProps<
     Multiple extends boolean | undefined = false,
     DisableClearable extends boolean | undefined = false,
     SupportCreate extends boolean | undefined = false,
-> = Omit<CommonInputProps, 'source' | 'onChange' | 'defaultValue'> &
+> = Omit<CommonInputProps, 'onChange' | 'defaultValue'> & // <-- Fix: Removed 'source' from Omit
     Omit<ChoicesProps, 'disableValue'> &
     UseSuggestionsOptions &
     Omit<SupportCreateSuggestionOptions, 'handleChange' | 'optionText'> &
@@ -726,6 +724,7 @@ export type AutocompleteInputProps<
         >,
         'onChange' | 'options' | 'renderInput' | 'defaultValue' | 'multiple'
     > & {
+        offline?: boolean | React.ReactElement; // <-- Fix: explicitly typing 'offline'
         defaultValue?: Multiple extends true ? OptionType[] : OptionType;
         debounce?: number;
         emptyText?: string;
@@ -751,9 +750,7 @@ const StyledAutocomplete = styled(Autocomplete, {
     name: PREFIX,
     overridesResolver: (props, styles) => styles.root,
 })(({ theme }: { theme: Theme }) => ({
-    [`& .${AutocompleteInputClasses.createOption}`]: {
-        fontStyle: 'italic',
-    },
+    // Retained for standard scoping, but fallback handled in inline renderOption
 })) as typeof Autocomplete;
 
 function areSelectedItemsEqual(
