@@ -1,10 +1,33 @@
 import * as React from 'react';
-import type { InputProps } from '../form/useInput';
-import type { ChoicesProps } from '../form/choices/useChoices';
-import { AutocompleteInput } from './AutocompleteInput';
+import { RaRecord } from 'ra-core';
+import { AutocompleteInput, AutocompleteInputProps } from './AutocompleteInput';
 
-export const AutocompleteArrayInput = (
-    props: Partial<InputProps> & Partial<ChoicesProps> & { multiple?: boolean }
-) => {
-    return <AutocompleteInput {...props} multiple={true} />;
+export const AutocompleteArrayInput = <
+    OptionType extends RaRecord = RaRecord,
+    DisableClearable extends boolean | undefined = boolean | undefined,
+    SupportCreate extends boolean | undefined = false,
+>({
+    defaultValue,
+    ...props
+}: AutocompleteArrayInputProps<
+    OptionType,
+    DisableClearable,
+    SupportCreate
+>) => (
+    <AutocompleteInput<OptionType, true, DisableClearable, SupportCreate>
+        {...props}
+        multiple
+        defaultValue={defaultValue ?? (props.disabled ? undefined : [])}
+    />
+);
+
+export type AutocompleteArrayInputProps<
+    OptionType extends RaRecord = RaRecord,
+    DisableClearable extends boolean | undefined = false,
+    SupportCreate extends boolean | undefined = false,
+> = Omit<
+    AutocompleteInputProps<OptionType, true, DisableClearable, SupportCreate>,
+    'defaultValue'
+> & {
+    defaultValue?: OptionType[];
 };

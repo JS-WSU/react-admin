@@ -13,25 +13,6 @@ import { OptionText } from '../../form/choices/useChoices';
 import { useTranslate } from '../../i18n/useTranslate';
 import set from 'lodash/set.js';
 
-/**
- * This hook provides support for suggestion creation in inputs which have choices.
- *
- * @param options The hook option
- * @param {ReactElement} options.create A react element which will be rendered when users choose to create a new choice. This component must call the `useCreateSuggestionContext` hook which provides `onCancel`, `onCreate` and `filter`. See the examples.
- * @param {React.ReactNode|string} options.createLabel Optional. The label for the choice item allowing users to create a new choice. Can be a translation key. Defaults to `ra.action.create`.
- * @param {React.ReactNode|string} options.createItemLabel Optional. The label for the choice item allowing users to create a new choice when they already entered a filter. Can be a translation key. The function and ttranslation will receive an `item` parameter. Providing this option will turn the create label when there is no filter to be a hint (i.e. a disabled item).
- * @param {any} options.createValue Optional. The value for the choice item allowing users to create a new choice. Defaults to `@@ra-create`.
- * @param {any} options.createHintValue Optional. The value for the (disabled) item hinting users on how to create a new choice. Defaults to `@@ra-create-hint`.
- * @param {String} options.filter Optional. The filter users may have already entered. Useful for autocomplete inputs for example.
- * @param {OnCreateHandler} options.onCreate Optional. A function which will be called when users choose to create a new choice, if the `create` option wasn't provided.
- * @param {Function} options.handleChange A function to pass to the input. Receives the same parameter as the original event handler and an additional newItem parameter if a new item was create.
- *
- * @returns {UseSupportCreateValue} An object with the following properties:
- * - getCreateItem: a function which will return the label of the choice for create a new choice.
- * - handleChange: a function which should be called when the input value changes. It will call the `onCreate` function if the value is the createValue.
- * - createElement: a React element to render after the input. It will be rendered when users choose to create a new choice. It renders null otherwise.
- * - getOptionDisabled: a function which should be passed to the input to disable the create choice when the filter is empty (to make it a hint).
- */
 export const useSupportCreateSuggestion = (
     options: SupportCreateSuggestionOptions
 ): UseSupportCreateValue => {
@@ -54,7 +35,7 @@ export const useSupportCreateSuggestion = (
     return {
         createId: createValue,
         createHintId: createHintValue,
-        getCreateItem: (filter: string) => {
+        getCreateItem: (filter?: string) => {
             filterRef.current = filter;
 
             return set(
@@ -75,17 +56,26 @@ export const useSupportCreateSuggestion = (
                     : typeof createLabel === 'string'
                       ? translate(createLabel, { _: createLabel })
                       : createLabel
-            );
+            ) as { id: Identifier; [key: string]: unknown };
         },
-        handleChange: async (eventOrValue: MouseEvent | any) => {
-            const value = eventOrValue?.target?.value || eventOrValue;
+        handleChange: async (
+            eventOrValue: ChangeEvent<HTMLInputElement> | unknown
+        ) => {
+            const value =
+                (eventOrValue as { target?: { value?: unknown } })?.target
+                    ?.value || eventOrValue;
             const finalValue = Array.isArray(value) ? [...value].pop() : value;
+            const castFinalValue = finalValue as { id?: unknown } | unknown;
 
-            if (finalValue?.id === createValue || finalValue === createValue) {
+            if (
+                (castFinalValue &&
+                    typeof castFinalValue === 'object' &&
+                    'id' in castFinalValue &&
+                    castFinalValue.id === createValue) ||
+                finalValue === createValue
+            ) {
                 if (!isValidElement(create)) {
                     if (!onCreate) {
-                        // this should never happen because the createValue is only added if a create function is provided
-                        // @see AutocompleteInput:filterOptions
                         throw new Error(
                             'To create a new option, you must pass an onCreate function or a create element.'
                         );
@@ -117,8 +107,16 @@ export const useSupportCreateSuggestion = (
                     {create}
                 </CreateSuggestionContext.Provider>
             ) : null,
-        getOptionDisabled: option =>
-            option?.id === createHintValue || option === createHintValue,
+        getOptionDisabled: (option: unknown) => {
+            const optionCast = option as { id?: unknown } | unknown;
+            return (
+                (optionCast &&
+                    typeof optionCast === 'object' &&
+                    'id' in optionCast &&
+                    optionCast.id === createHintValue) ||
+                option === createHintValue
+            );
+        },
     };
 };
 
@@ -129,7 +127,7 @@ export interface SupportCreateSuggestionOptions {
     createLabel?: React.ReactNode;
     createItemLabel?: string | ((filter: string) => React.ReactNode);
     filter?: string;
-    handleChange: (value: any) => void;
+    handleChange: (value: unknown) => void;
     onCreate?: OnCreateHandler;
     optionText?: OptionText;
 }
@@ -139,11 +137,13 @@ export interface UseSupportCreateValue {
     createHintId: string;
     getCreateItem: (filterValue?: string) => {
         id: Identifier;
-        [key: string]: any;
+        [key: string]: unknown;
     };
-    handleChange: (eventOrValue: ChangeEvent | any) => Promise<void>;
+    handleChange: (
+        eventOrValue: ChangeEvent<HTMLInputElement> | unknown
+    ) => Promise<void>;
     createElement: ReactElement | null;
-    getOptionDisabled: (option: any) => boolean;
+    getOptionDisabled: (option: unknown) => boolean;
 }
 
 const CreateSuggestionContext = createContext<
@@ -152,7 +152,7 @@ const CreateSuggestionContext = createContext<
 
 interface CreateSuggestionContextValue {
     filter?: string;
-    onCreate: (choice: any) => void;
+    onCreate: (choice: unknown) => void;
     onCancel: () => void;
 }
 
@@ -166,4 +166,4 @@ export const useCreateSuggestionContext = () => {
     return context;
 };
 
-export type OnCreateHandler = (filter?: string) => any | Promise<any>;
+export type OnCreateHandler = (filter?: string) => unknown | Promise<unknown>;
