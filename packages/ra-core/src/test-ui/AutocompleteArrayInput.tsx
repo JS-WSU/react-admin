@@ -1,12 +1,8 @@
 import * as React from 'react';
-import type { RaRecord } from 'ra-core';
+import type { RaRecord } from '../types';
 import { AutocompleteInput } from './AutocompleteInput';
 
-// If AutocompleteInputProps is missing from your test-ui mock,
-// we extract the prop types natively from the component to suppress the TS error.
-type InferredAutocompleteInputProps = React.ComponentProps<
-    typeof AutocompleteInput
->;
+type InferredAutocompleteInputProps = React.ComponentProps<typeof AutocompleteInput>;
 
 export const AutocompleteArrayInput = <
     OptionType extends RaRecord = RaRecord,

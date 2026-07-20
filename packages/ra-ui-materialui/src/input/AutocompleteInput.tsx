@@ -527,7 +527,7 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const handleAutocompleteChange = useCallback(
         (event: React.SyntheticEvent, newValue: OptionType | OptionType[] | null, reason: AutocompleteChangeReason) => {
-            event.preventDefault();
+            // FIX: Removed event.preventDefault() so MUI Autocomplete can process the change naturally
             if (reason === 'createOption') {
                 const valueToCreate = Array.isArray(newValue)
                     ? newValue[newValue.length - 1]
@@ -630,10 +630,8 @@ If you provided a React element for the optionText prop, you must also provide t
                 openText={translate(openText, { _: openText })}
                 options={suggestions}
                 renderInput={params => {
-                    // Extract ref from MUI Autocomplete params.inputProps
                     const { ref: autocompleteInputRef, ...paramsInputProps } = params.inputProps;
                     
-                    // Fork all refs together so both React Hook Form and MUI Autocomplete get the HTMLInputElement
                     const combinedInputRef = useForkRef(
                         handleInputRef,
                         autocompleteInputRef
