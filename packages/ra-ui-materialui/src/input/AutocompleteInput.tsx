@@ -612,7 +612,7 @@ If you provided a React element for the optionText prop, you must also provide t
         getProps: (args: { index: number }) => Record<string, unknown>
     ) =>
         value.map((option, index) => {
-            const { key, ...chipProps } = getProps({ index });
+            const { key, ...chipProps } = getProps({ index }) as any;
 
             type SafeProps = {
                 slotProps?: { chip?: Record<string, unknown> };
@@ -625,7 +625,7 @@ If you provided a React element for the optionText prop, you must also provide t
 
             return (
                 <Chip
-                    key={key || index}
+                    key={key ?? index}
                     label={getOptionLabel(option, true)}
                     size="small"
                     {...chipProps}
@@ -740,7 +740,8 @@ If you provided a React element for the optionText prop, you must also provide t
                     );
                 }}
                 renderOption={(optionProps, record: OptionType) => {
-                    const { key: ignoredKey, ...restOptionProps } = optionProps;
+                    const { key: ignoredKey, ...restOptionProps } =
+                        optionProps as any;
                     const key = getChoiceValue(record);
                     const optionLabel = getOptionLabel(record, true);
                     const isCreateOption =
@@ -766,7 +767,6 @@ If you provided a React element for the optionText prop, you must also provide t
             {createElement}
             {renderHelperText ? (
                 <InputHelperText
-                    touched={invalid || undefined}
                     error={
                         invalid
                             ? fetchError?.message ?? error?.message

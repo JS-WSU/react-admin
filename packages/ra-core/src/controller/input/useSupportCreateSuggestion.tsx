@@ -6,6 +6,8 @@ import {
     useCallback,
     useMemo,
     useState,
+    createContext,
+    useContext,
 } from 'react';
 import { useTranslate } from '../../i18n';
 import type { RaRecord } from '../../types';
@@ -31,6 +33,26 @@ export interface SupportCreateSuggestionOptions {
     onCreate?: (filter: string) => void;
     optionText?: any;
 }
+
+export interface CreateSuggestionContextValue {
+    filter?: string;
+    onCancel: () => void;
+    onCreate: (item: any) => void;
+}
+
+export const CreateSuggestionContext = createContext<
+    CreateSuggestionContextValue | undefined
+>(undefined);
+
+export const useCreateSuggestionContext = () => {
+    const context = useContext(CreateSuggestionContext);
+    if (!context) {
+        throw new Error(
+            'useCreateSuggestionContext must be used within a CreateSuggestionContext.Provider'
+        );
+    }
+    return context;
+};
 
 /**
  * This hook provides support for suggestion creation in inputs which have suggestions.
@@ -122,12 +144,10 @@ export const useSupportCreateSuggestion = (
                     item === createHintValue
                 ) {
                     if (typeof onCreate === 'function') {
-                        // Ensure a string is always passed
                         onCreate(filter || '');
                         return;
                     }
                     if (isValidElement(create)) {
-                        // Ensure a string is always passed
                         setDialogFilter(filter || '');
                         setRenderDialog(true);
                         return;
@@ -145,9 +165,11 @@ export const useSupportCreateSuggestion = (
             ]
         ),
         createElement:
-            renderDialog && isValidElement(create)
-                ? cloneElement(create, context as any)
-                : null,
+            renderDialog && isValidElement(create) ? (
+                <CreateSuggestionContext.Provider value={context}>
+                    {cloneElement(create, context as any)}
+                </CreateSuggestionContext.Provider>
+            ) : null,
         createId: createValue,
         createHintId: createHintValue,
         getOptionDisabled: (option: unknown): boolean => {
