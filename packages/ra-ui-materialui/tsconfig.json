@@ -3,8 +3,17 @@
     "compilerOptions": {
         "outDir": "dist",
         "rootDir": "src",
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "target": "ES2022",
+        "moduleResolution": "bundler"
     },
-    "exclude": ["**/*.spec.ts", "**/*.spec.tsx", "**/*.spec.js", "**/*.stories.tsx"],
-    "include": ["src"]
+    "exclude": [
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*.spec.js",
+        "**/*.stories.tsx"
+    ],
+    "include": [
+        "src"
+    ]
 }

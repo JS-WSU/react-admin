@@ -7,11 +7,9 @@ import {
     createFilterOptions,
     TextField,
     type TextFieldProps,
-    major as muiMajor,
     useForkRef,
 } from '@mui/material';
 import {
-    type ComponentsOverrides,
     styled,
     useThemeProps,
     type Theme,
@@ -180,7 +178,6 @@ export const AutocompleteInput = <
 
     const finalChoices = useMemo(
         () =>
-            // eslint-disable-next-line eqeqeq
             emptyText == undefined || isRequired || multiple
                 ? allChoices
                 : [
@@ -212,7 +209,6 @@ export const AutocompleteInput = <
         SupportCreate
     >(field.value, {
         choices: finalChoices as OptionType[],
-        // @ts-ignore multiple dynamic evaluation
         multiple,
         optionValue,
     });
@@ -226,13 +222,11 @@ export const AutocompleteInput = <
     }, [emptyValue]);
 
     useEffect(() => {
-        // eslint-disable-next-line eqeqeq
         if (isValidElement(optionText) && emptyText != undefined) {
             throw new Error(
                 `optionText of type React element is not supported when setting emptyText`
             );
         }
-        // eslint-disable-next-line eqeqeq
         if (isValidElement(optionText) && inputText == undefined) {
             throw new Error(`
 If you provided a React element for the optionText prop, you must also provide the inputText prop (used for the text input)`);
@@ -240,7 +234,6 @@ If you provided a React element for the optionText prop, you must also provide t
         if (
             isValidElement(optionText) &&
             !isFromReference &&
-            // eslint-disable-next-line eqeqeq
             matchSuggestion == undefined
         ) {
             throw new Error(`
@@ -250,11 +243,9 @@ If you provided a React element for the optionText prop, you must also provide t
 
     useEffect(() => {
         warning(
-            /* eslint-disable eqeqeq */
             shouldRenderSuggestions != undefined && noOptionsText == undefined,
             `When providing a shouldRenderSuggestions function, we recommend you also provide the noOptionsText prop and set it to a text explaining users why no options are displayed. It supports translation keys.`
         );
-        /* eslint-enable eqeqeq */
     }, [shouldRenderSuggestions, noOptionsText]);
 
     const getRecordRepresentation = useGetRecordRepresentation(resource);
@@ -275,10 +266,9 @@ If you provided a React element for the optionText prop, you must also provide t
     });
 
     const [filterValue, setFilterValue] = useState('');
-
     const [isOpen, setIsOpen] = useState(false);
     const canRenderSuggestions =
-        shouldRenderSuggestions == undefined || // eslint-disable-line eqeqeq
+        shouldRenderSuggestions == undefined ||
         shouldRenderSuggestions(filterValue);
 
     const handleOpen = useEvent((event: React.SyntheticEvent) => {
@@ -293,25 +283,20 @@ If you provided a React element for the optionText prop, you must also provide t
         }
     );
 
-    const handleChange = useEvent(
-        (newValue: OptionType | OptionType[] | null) => {
-            if (multiple) {
-                if (Array.isArray(newValue)) {
-                    field.onChange(newValue.map(getChoiceValue), newValue);
-                } else {
-                    field.onChange(
-                        [...(field.value ?? []), getChoiceValue(newValue)],
-                        newValue
-                    );
-                }
+    const handleChange = useEvent((newValue: OptionType | OptionType[] | null) => {
+        if (multiple) {
+            if (Array.isArray(newValue)) {
+                field.onChange(newValue.map(getChoiceValue), newValue);
             } else {
                 field.onChange(
-                    getChoiceValue(newValue) ?? emptyValue,
+                    [...(field.value ?? []), getChoiceValue(newValue)],
                     newValue
                 );
             }
+        } else {
+            field.onChange(getChoiceValue(newValue) ?? emptyValue, newValue);
         }
-    );
+    });
 
     const debouncedSetFilter = useCallback(
         debounce((filter: string) => {
@@ -366,11 +351,7 @@ If you provided a React element for the optionText prop, you must also provide t
     );
 
     const getOptionLabel = useCallback(
-        (
-            option: OptionType | string | null | undefined,
-            isListItem: boolean = false
-        ): string | ReactNode => {
-            // eslint-disable-next-line eqeqeq
+        (option: OptionType | string | null | undefined, isListItem: boolean = false): string | ReactNode => {
             if (option == undefined) {
                 return '';
             }
@@ -421,13 +402,9 @@ If you provided a React element for the optionText prop, you must also provide t
     const finalOnBlur = useCallback(
         (event: React.FocusEvent<HTMLInputElement>): void => {
             if (clearOnBlur && !multiple) {
-                const optionLabel = getOptionLabel(
-                    selectedChoice as OptionType
-                );
+                const optionLabel = getOptionLabel(selectedChoice as OptionType);
                 if (!isEqual(optionLabel, filterValue)) {
-                    setFilterValue(
-                        typeof optionLabel === 'string' ? optionLabel : ''
-                    );
+                    setFilterValue(typeof optionLabel === 'string' ? optionLabel : '');
                     debouncedSetFilter('');
                 }
             }
@@ -456,6 +433,23 @@ If you provided a React element for the optionText prop, you must also provide t
             }
         }
     }, [getOptionLabel, multiple, selectedChoice]);
+
+    const doesQueryMatchSelection = useCallback(
+        (filter: string) => {
+            let selectedItemTexts;
+
+            if (multiple) {
+                selectedItemTexts = (selectedChoice as OptionType[]).map(item =>
+                    getOptionLabelString(item)
+                );
+            } else {
+                selectedItemTexts = [getOptionLabelString(selectedChoice as OptionType)];
+            }
+
+            return selectedItemTexts.includes(filter);
+        },
+        [getOptionLabelString, multiple, selectedChoice]
+    );
 
     const handleInputChange: AutocompleteProps<
         OptionType,
@@ -494,31 +488,10 @@ If you provided a React element for the optionText prop, you must also provide t
         onInputChange?.(event, newInputValue, reason);
     });
 
-    const doesQueryMatchSelection = useCallback(
-        (filter: string) => {
-            let selectedItemTexts;
-
-            if (multiple) {
-                selectedItemTexts = (selectedChoice as OptionType[]).map(item =>
-                    getOptionLabelString(item)
-                );
-            } else {
-                selectedItemTexts = [
-                    getOptionLabelString(selectedChoice as OptionType),
-                ];
-            }
-
-            return selectedItemTexts.includes(filter);
-        },
-        [getOptionLabelString, multiple, selectedChoice]
-    );
-
     const doesQueryMatchSuggestion = useCallback(
         (filter: string) => {
             const hasOption = finalChoices
-                ? (finalChoices as OptionType[]).some(
-                      choice => getOptionLabelString(choice) === filter
-                  )
+                ? (finalChoices as OptionType[]).some(choice => getOptionLabelString(choice) === filter)
                 : false;
 
             return doesQueryMatchSelection(filter) || hasOption;
@@ -528,16 +501,16 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const filterOptions = (options: OptionType[], params: any) => {
         let filteredOptions =
-            isFromReference || matchSuggestion || limitChoicesToValue
+            isFromReference || 
+            matchSuggestion || 
+            limitChoicesToValue 
                 ? options
                 : defaultFilterOptions(options, params);
 
         const { inputValue } = params;
         if (onCreate || create) {
             if (inputValue === '' && filterValue === '' && createLabel) {
-                filteredOptions = filteredOptions.concat(
-                    getCreateItem('') as OptionType
-                );
+                filteredOptions = filteredOptions.concat(getCreateItem('') as OptionType);
             } else if (
                 inputValue &&
                 filterValue &&
@@ -553,22 +526,14 @@ If you provided a React element for the optionText prop, you must also provide t
     };
 
     const handleAutocompleteChange = useCallback(
-        (
-            event: React.SyntheticEvent,
-            newValue: OptionType | OptionType[] | null,
-            reason: AutocompleteChangeReason
-        ) => {
+        (event: React.SyntheticEvent, newValue: OptionType | OptionType[] | null, reason: AutocompleteChangeReason) => {
             event.preventDefault();
             if (reason === 'createOption') {
                 const valueToCreate = Array.isArray(newValue)
                     ? newValue[newValue.length - 1]
                     : newValue;
                 handleChangeWithCreateSupport(
-                    getCreateItem(
-                        typeof valueToCreate === 'string'
-                            ? valueToCreate
-                            : undefined
-                    )
+                    getCreateItem(typeof valueToCreate === 'string' ? valueToCreate : undefined)
                 );
                 return;
             }
@@ -609,39 +574,19 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const renderChips = (
         value: OptionType[],
-        getProps: (args: { index: number }) => Record<string, unknown>
+        getCustomProps: (args: { index: number }) => Record<string, unknown>
     ) =>
         value.map((option, index) => {
-            const { key, ...chipProps } = getProps({ index }) as any;
-
-            type SafeProps = {
-                slotProps?: { chip?: Record<string, unknown> };
-                ChipProps?: Record<string, unknown>;
-            };
-
-            const mergedSlotProps = (props as SafeProps).slotProps?.chip
-                ? (props as SafeProps).slotProps?.chip
-                : (props as SafeProps).ChipProps;
-
+            const { key, ...chipProps } = getCustomProps({ index }) as any;
             return (
                 <Chip
                     key={key ?? index}
                     label={getOptionLabel(option, true)}
                     size="small"
                     {...chipProps}
-                    {...mergedSlotProps}
                 />
             );
         });
-
-    type SafeTextFieldProps = TextFieldProps & {
-        slotProps?: {
-            input?: Record<string, unknown>;
-            inputLabel?: Record<string, unknown>;
-            htmlInput?: Record<string, unknown>;
-        };
-    };
-    const tfProps = TextFieldProps as SafeTextFieldProps | undefined;
 
     return (
         <>
@@ -677,14 +622,7 @@ If you provided a React element for the optionText prop, you must also provide t
                     )
                 }
                 onBlur={finalOnBlur}
-                onChange={
-                    handleAutocompleteChange as AutocompleteProps<
-                        OptionType,
-                        Multiple,
-                        DisableClearable,
-                        SupportCreate
-                    >['onChange']
-                }
+                onChange={handleAutocompleteChange as AutocompleteProps<OptionType, Multiple, DisableClearable, SupportCreate>['onChange']}
                 onClose={handleClose}
                 onInputChange={handleInputChange}
                 onOpen={handleOpen}
@@ -692,15 +630,19 @@ If you provided a React element for the optionText prop, you must also provide t
                 openText={translate(openText, { _: openText })}
                 options={suggestions}
                 renderInput={params => {
-                    const inputProps =
-                        muiMajor >= 6 && tfProps?.slotProps?.input
-                            ? {
-                                  ...params.InputProps,
-                                  ...tfProps?.slotProps?.input,
-                              }
-                            : { ...params.InputProps, ...tfProps?.InputProps };
+                    // Extract ref from MUI Autocomplete params.inputProps
+                    const { ref: autocompleteInputRef, ...paramsInputProps } = params.inputProps;
+                    
+                    // Fork all refs together so both React Hook Form and MUI Autocomplete get the HTMLInputElement
+                    const combinedInputRef = useForkRef(
+                        handleInputRef,
+                        autocompleteInputRef
+                    );
+
                     return (
                         <TextField
+                            {...params}
+                            {...TextFieldProps}
                             name={field.name}
                             label={
                                 label !== '' &&
@@ -716,32 +658,20 @@ If you provided a React element for the optionText prop, you must also provide t
                             error={invalid}
                             margin={margin}
                             variant={variant}
-                            {...params}
-                            {...TextFieldProps}
-                            {...(muiMajor >= 6
-                                ? {
-                                      slotProps: {
-                                          input: inputProps,
-                                          inputLabel:
-                                              tfProps?.slotProps?.inputLabel ||
-                                              tfProps?.InputLabelProps,
-                                          htmlInput:
-                                              tfProps?.slotProps?.htmlInput ||
-                                              tfProps?.inputProps,
-                                      },
-                                  }
-                                : {
-                                      InputProps: inputProps,
-                                      InputLabelProps: tfProps?.InputLabelProps,
-                                      inputProps: tfProps?.inputProps,
-                                  })}
-                            inputRef={handleInputRef}
+                            InputProps={{
+                                ...params.InputProps,
+                                ...TextFieldProps?.InputProps,
+                            }}
+                            inputProps={{
+                                ...paramsInputProps,
+                                ...TextFieldProps?.inputProps,
+                            }}
+                            inputRef={combinedInputRef}
                         />
                     );
                 }}
                 renderOption={(optionProps, record: OptionType) => {
-                    const { key: ignoredKey, ...restOptionProps } =
-                        optionProps as any;
+                    const { key: ignoredKey, ...restOptionProps } = optionProps as any;
                     const key = getChoiceValue(record);
                     const optionLabel = getOptionLabel(record, true);
                     const isCreateOption =
@@ -769,7 +699,7 @@ If you provided a React element for the optionText prop, you must also provide t
                 <InputHelperText
                     error={
                         invalid
-                            ? fetchError?.message ?? error?.message
+                            ? (fetchError?.message ?? error?.message)
                             : undefined
                     }
                     helperText={helperText}
@@ -870,9 +800,9 @@ const useSelectedChoice = <
         SupportCreate
     >
 ): OptionType | OptionType[] | null => {
-    const [selectedChoice, setSelectedChoice] = useState<
-        OptionType | OptionType[] | null
-    >(multiple ? [] : null);
+    const [selectedChoice, setSelectedChoice] = useState<OptionType | OptionType[] | null>(
+        multiple ? [] : null
+    );
 
     useEffect(() => {
         if (!choices) {
@@ -883,14 +813,16 @@ const useSelectedChoice = <
             newSelectedItem = (Array.isArray(value) ? value : [])
                 .map(val =>
                     choices.find(
-                        choice => get(choice, optionValue as string) === val
+                        choice =>
+                            get(choice, optionValue as string) === val
                     )
                 )
                 .filter(val => val !== undefined) as OptionType[];
         } else {
             newSelectedItem =
                 choices.find(
-                    choice => get(choice, optionValue as string) === value
+                    choice =>
+                        get(choice, optionValue as string) === value
                 ) || null;
         }
         if (
