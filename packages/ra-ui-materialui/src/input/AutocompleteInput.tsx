@@ -508,13 +508,14 @@ If you provided a React element for the optionText prop, you must also provide t
                 : defaultFilterOptions(options, params);
 
         const { inputValue } = params;
+        
+        // FIX: Utilize params.inputValue (real-time typing) over filterValue (debounced lag)
         if (onCreate || create) {
             if (inputValue === '' && filterValue === '' && createLabel) {
                 filteredOptions = filteredOptions.concat(getCreateItem('') as OptionType);
             } else if (
                 inputValue &&
-                filterValue &&
-                !doesQueryMatchSuggestion(filterValue)
+                !doesQueryMatchSuggestion(inputValue)
             ) {
                 filteredOptions = filteredOptions.concat(
                     getCreateItem(inputValue) as OptionType
@@ -527,7 +528,6 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const handleAutocompleteChange = useCallback(
         (event: React.SyntheticEvent, newValue: OptionType | OptionType[] | null, reason: AutocompleteChangeReason) => {
-            // FIX: Removed event.preventDefault() so MUI Autocomplete can process the change naturally
             if (reason === 'createOption') {
                 const valueToCreate = Array.isArray(newValue)
                     ? newValue[newValue.length - 1]
@@ -591,7 +591,8 @@ If you provided a React element for the optionText prop, you must also provide t
     return (
         <>
             <StyledAutocomplete
-                blurOnSelect={!multiple}
+                // FIX: Removed blurOnSelect completely. It triggers an early blur sequence before React Hook Form 
+                // state update finishes, aggressively clearing the input upon a valid selection.
                 clearOnBlur={clearOnBlur}
                 className={clsx('ra-input', `ra-input-${source}`, className)}
                 clearText={translate(clearText, { _: clearText })}
