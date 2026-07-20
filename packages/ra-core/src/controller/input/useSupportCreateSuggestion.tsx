@@ -7,9 +7,30 @@ import {
     useMemo,
     useState,
 } from 'react';
-import { useTranslate } from '../i18n';
-import type { RaRecord } from '../types';
-import type { UseSupportCreateValue } from './useSupportCreateValue';
+import { useTranslate } from '../../i18n';
+import type { RaRecord } from '../../types';
+
+export interface UseSupportCreateValue {
+    getCreateItem: (filterValue?: string) => any;
+    handleChange: (itemOrEvent: any) => void;
+    createElement: ReactElement | null;
+    createId: string;
+    createHintId: string;
+    getOptionDisabled: (option: unknown) => boolean;
+    getCreateHintItem: () => any;
+}
+
+export interface SupportCreateSuggestionOptions {
+    create?: ReactElement | boolean;
+    createLabel?: string;
+    createItemLabel?: string | ((filter: string) => React.ReactNode);
+    createValue?: string;
+    createHintValue?: string;
+    handleChange: (item: any) => void;
+    filter?: string;
+    onCreate?: (filter: string) => void;
+    optionText?: any;
+}
 
 /**
  * This hook provides support for suggestion creation in inputs which have suggestions.
@@ -35,13 +56,13 @@ export const useSupportCreateSuggestion = (
         createValue = '@@ra-create',
         createHintValue = '@@ra-create-hint',
         handleChange,
-        filter,
+        filter = '',
         onCreate,
         optionText = 'name',
     } = options;
     const translate = useTranslate();
     const [renderDialog, setRenderDialog] = useState(false);
-    const [dialogFilter, setDialogFilter] = useState('');
+    const [dialogFilter, setDialogFilter] = useState<string>('');
 
     const getCreateItem = useCallback(
         (filterValue: string = '') => {
@@ -101,11 +122,13 @@ export const useSupportCreateSuggestion = (
                     item === createHintValue
                 ) {
                     if (typeof onCreate === 'function') {
-                        onCreate(filter);
+                        // Ensure a string is always passed
+                        onCreate(filter || '');
                         return;
                     }
                     if (isValidElement(create)) {
-                        setDialogFilter(filter);
+                        // Ensure a string is always passed
+                        setDialogFilter(filter || '');
                         setRenderDialog(true);
                         return;
                     }
@@ -140,15 +163,3 @@ export const useSupportCreateSuggestion = (
         getCreateHintItem,
     };
 };
-
-export interface SupportCreateSuggestionOptions {
-    create?: ReactElement | boolean;
-    createLabel?: string;
-    createItemLabel?: string | ((filter: string) => React.ReactNode);
-    createValue?: string;
-    createHintValue?: string;
-    handleChange: (item: any) => void;
-    filter?: string;
-    onCreate?: (filter: string) => void;
-    optionText?: any;
-}
