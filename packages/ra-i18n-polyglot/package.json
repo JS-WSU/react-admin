@@ -24,8 +24,8 @@
         "build": "zshy --silent"
     },
     "dependencies": {
-        "node-polyglot": "^2.2.2",
-        "ra-core": "^5.15.0"
+        "node-polyglot": "~2.2.2",
+        "ra-core": "~5.15.0"
     },
     "devDependencies": {
         "typescript": "^5.1.3",

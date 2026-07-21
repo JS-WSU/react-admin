@@ -20,7 +20,7 @@
         "build": "zshy --silent"
     },
     "dependencies": {
-        "ra-core": "^5.15.0"
+        "ra-core": "~5.15.0"
     },
     "devDependencies": {
         "typescript": "^5.1.3",

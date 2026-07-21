@@ -36,7 +36,7 @@
         "build": "zshy --silent"
     },
     "dependencies": {
-        "fakerest": "^4.0.1"
+        "fakerest": "~4.0.1"
     },
     "devDependencies": {
         "@types/jest": "^29.5.2",
