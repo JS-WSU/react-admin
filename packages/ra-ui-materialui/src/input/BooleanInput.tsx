@@ -10,6 +10,7 @@ import {
     ComponentsOverrides,
     styled,
     useThemeProps,
+    Theme,
 } from '@mui/material/styles';
 
 import { CommonInputProps } from './CommonInputProps';
@@ -62,9 +63,8 @@ export const BooleanInput = (props: BooleanInputProps) => {
     });
 
     const handleChange = useCallback(
-        event => {
+        (event: React.ChangeEvent<HTMLInputElement>) => {
             field.onChange(event);
-            // Ensure field is considered as touched
             field.onBlur();
         },
         [field]
@@ -87,6 +87,7 @@ export const BooleanInput = (props: BooleanInputProps) => {
                         onChange={handleChange}
                         onFocus={onFocus}
                         checked={Boolean(field.value)}
+                        required={isRequired}
                         {...sanitizeInputRestProps(rest)}
                         {...options}
                         disabled={disabled || readOnly}
