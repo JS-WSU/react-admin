@@ -5,15 +5,14 @@ import {
     ComponentsOverrides,
     styled,
     useThemeProps,
+    Theme,
 } from '@mui/material/styles';
+import { TextFieldProps } from '@mui/material/TextField';
 
 import { CommonInputProps } from './CommonInputProps';
-import {
-    ResettableTextField,
-    ResettableTextFieldProps,
-} from './ResettableTextField';
-import { InputHelperText } from './InputHelperText';
+import { ResettableTextField } from './ResettableTextField';
 import { sanitizeInputRestProps } from './sanitizeInputRestProps';
+import { InputHelperText } from './InputHelperText';
 
 /**
  * An Input component for a string
@@ -27,11 +26,12 @@ import { sanitizeInputRestProps } from './sanitizeInputRestProps';
  * <TextInput source="email" type="email" />
  * <NumberInput source="nb_views" />
  *
+ * The object passed as `options` props is passed to the <ResettableTextField> component
  */
 export const TextInput = (props: TextInputProps) => {
     const {
         className,
-        defaultValue,
+        defaultValue = '',
         label,
         format,
         helperText,
@@ -41,6 +41,10 @@ export const TextInput = (props: TextInputProps) => {
         resource,
         source,
         validate,
+        variant,
+        margin,
+        disabled,
+        readOnly,
         ...rest
     } = useThemeProps({
         props: props,
@@ -48,9 +52,9 @@ export const TextInput = (props: TextInputProps) => {
     });
 
     const {
+        id,
         field,
         fieldState: { error, invalid },
-        id,
         isRequired,
     } = useInput({
         defaultValue,
@@ -62,6 +66,8 @@ export const TextInput = (props: TextInputProps) => {
         validate,
         onBlur,
         onChange,
+        disabled,
+        readOnly,
         ...rest,
     });
 
@@ -91,13 +97,21 @@ export const TextInput = (props: TextInputProps) => {
                     />
                 ) : null
             }
+            variant={variant}
+            margin={margin}
+            disabled={disabled || readOnly}
+            readOnly={readOnly}
             {...sanitizeInputRestProps(rest)}
+            inputProps={{
+                required: isRequired,
+                ...rest.inputProps,
+            }}
         />
     );
 };
 
 export type TextInputProps = CommonInputProps &
-    Omit<ResettableTextFieldProps, 'label' | 'helperText'>;
+    Omit<TextFieldProps, 'helperText' | 'label'>;
 
 const PREFIX = 'RaTextInput';
 
