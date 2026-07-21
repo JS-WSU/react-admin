@@ -145,7 +145,6 @@ export const DateTimeInput = (props: DateTimeInputProps) => {
             defaultValue={format(initialDefaultValueRef.current)}
             key={inputKey}
             type="datetime-local"
-            required={isRequired}
             onChange={handleChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -177,6 +176,10 @@ export const DateTimeInput = (props: DateTimeInputProps) => {
             InputLabelProps={defaultInputLabelProps}
             {...sanitizeInputRestProps(rest)}
             {...(muiMajor >= 6 ? { slotProps: mergedSlotProps } : {})}
+            inputProps={{
+                required: isRequired,
+                ...rest.inputProps,
+            }}
         />
     );
 };

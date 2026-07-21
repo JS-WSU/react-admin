@@ -14,6 +14,7 @@ import {
     type ComponentsOverrides,
     styled,
     useThemeProps,
+    Theme,
 } from '@mui/material/styles';
 import clsx from 'clsx';
 import debounce from 'lodash/debounce.js';
@@ -52,73 +53,6 @@ import { sanitizeInputRestProps } from './sanitizeInputRestProps';
 
 const defaultFilterOptions = createFilterOptions();
 
-/**
- * An Input component for an autocomplete field, using an array of objects for the options
- *
- * Pass possible options as an array of objects in the 'choices' attribute.
- *
- * By default, the options are built from:
- *  - the 'id' property as the option value,
- *  - the 'name' property as the option text
- * @example
- * const choices = [
- *    { id: 'M', name: 'Male' },
- *    { id: 'F', name: 'Female' },
- * ];
- * <AutocompleteInput source="gender" choices={choices} />
- *
- * You can also customize the properties to use for the option name and value,
- * thanks to the 'optionText' and 'optionValue' attributes.
- * @example
- * const choices = [
- *    { _id: 123, full_name: 'Leo Tolstoi', sex: 'M' },
- *    { _id: 456, full_name: 'Jane Austen', sex: 'F' },
- * ];
- * <AutocompleteInput source="author_id" choices={choices} optionText="full_name" optionValue="_id" />
- *
- * `optionText` also accepts a function, so you can shape the option text at will:
- * @example
- * const choices = [
- *    { id: 123, first_name: 'Leo', last_name: 'Tolstoi' },
- *    { id: 456, first_name: 'Jane', last_name: 'Austen' },
- * ];
- * const optionRenderer = choice => `${choice.first_name} ${choice.last_name}`;
- * <AutocompleteInput source="author_id" choices={choices} optionText={optionRenderer} />
- *
- * `optionText` also accepts a React Element, that can access
- * the related choice through the `useRecordContext` hook. You can use Field components there.
- * Note that you must also specify the `matchSuggestion` and `inputText` props
- * @example
- * const choices = [
- *    { id: 123, first_name: 'Leo', last_name: 'Tolstoi' },
- *    { id: 456, first_name: 'Jane', last_name: 'Austen' },
- * ];
- * const matchSuggestion = (filterValue, choice) => choice.first_name.match(filterValue) || choice.last_name.match(filterValue)
- * const inputText = (record) => `${record.fullName} (${record.language})`;
- *
- * const FullNameField = () => {
- *     const record = useRecordContext();
- *     return <span>{record.first_name} {record.last_name}</span>;
- * }
- * <AutocompleteInput source="author" choices={choices} optionText={<FullNameField />} matchSuggestion={matchSuggestion} inputText={inputText} />
- *
- * The choices are translated by default, so you can use translation identifiers as choices:
- * @example
- * const choices = [
- *    { id: 'M', name: 'myroot.gender.male' },
- *    { id: 'F', name: 'myroot.gender.female' },
- * ];
- *
- * However, in some cases (e.g. inside a `<ReferenceInput>`), you may not want
- * the choice to be translated. In that case, set the `translateChoice` prop to false.
- * @example
- * <AutocompleteInput source="gender" choices={choices} translateChoice={false}/>
- *
- * The object passed as `options` props is passed to the Material UI <TextField> component
- *
- * @example
- * <AutocompleteInput source="author_id" options={{ color: 'secondary', InputLabelProps: { shrink: true } }} />
- */
 export const AutocompleteInput = <
     OptionType extends RaRecord = RaRecord,
     Multiple extends boolean | undefined = false,
@@ -246,7 +180,6 @@ export const AutocompleteInput = <
 
     const finalChoices = useMemo(
         () =>
-            // eslint-disable-next-line eqeqeq
             emptyText == undefined || isRequired || multiple
                 ? allChoices
                 : [
@@ -292,13 +225,11 @@ export const AutocompleteInput = <
     }, [emptyValue]);
 
     useEffect(() => {
-        // eslint-disable-next-line eqeqeq
         if (isValidElement(optionText) && emptyText != undefined) {
             throw new Error(
                 `optionText of type React element is not supported when setting emptyText`
             );
         }
-        // eslint-disable-next-line eqeqeq
         if (isValidElement(optionText) && inputText == undefined) {
             throw new Error(`
 If you provided a React element for the optionText prop, you must also provide the inputText prop (used for the text input)`);
@@ -306,7 +237,6 @@ If you provided a React element for the optionText prop, you must also provide t
         if (
             isValidElement(optionText) &&
             !isFromReference &&
-            // eslint-disable-next-line eqeqeq
             matchSuggestion == undefined
         ) {
             throw new Error(`
@@ -344,7 +274,7 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const [isOpen, setIsOpen] = useState(false);
     const canRenderSuggestions =
-        shouldRenderSuggestions == undefined || // eslint-disable-line eqeqeq
+        shouldRenderSuggestions == undefined ||
         shouldRenderSuggestions(filterValue);
 
     const handleOpen = useEvent((event: React.SyntheticEvent) => {
@@ -374,7 +304,6 @@ If you provided a React element for the optionText prop, you must also provide t
         }
     });
 
-    // eslint-disable-next-line
     const debouncedSetFilter = useCallback(
         debounce(filter => {
             if (setFilter) {
@@ -390,17 +319,13 @@ If you provided a React element for the optionText prop, you must also provide t
         [debounceDelay, setFilters, setFilter]
     );
 
-    // We must reset the filter every time the value changes to ensure we
-    // display at least some choices even if the input has a value.
-    // Otherwise, it would only display the currently selected one and the user
-    // would have to first clear the input before seeing any other choices
     const currentValue = useRef(field.value);
     useEffect(() => {
         if (!isEqual(currentValue.current, field.value)) {
             currentValue.current = field.value;
             debouncedSetFilter('');
         }
-    }, [field.value]); // eslint-disable-line
+    }, [field.value]);
 
     const {
         getCreateItem,
@@ -432,12 +357,10 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const getOptionLabel = useCallback(
         (option: any, isListItem: boolean = false) => {
-            // eslint-disable-next-line eqeqeq
             if (option == undefined) {
                 return '';
             }
 
-            // Value selected with enter, right from the input
             if (typeof option === 'string') {
                 return option;
             }
@@ -474,7 +397,6 @@ If you provided a React element for the optionText prop, you must also provide t
     const getOptionLabelString = useCallback(
         (option: any, isListItem: boolean = false) => {
             const optionLabel = getOptionLabel(option, isListItem);
-            // Can be a ReactNode when it's the create option.
             return typeof optionLabel === 'string' ? optionLabel : '';
         },
         [getOptionLabel]
@@ -541,13 +463,6 @@ If you provided a React element for the optionText prop, you must also provide t
             setFilterValue('');
             debouncedSetFilter('');
         }
-        // When filterSelectedOptions=false, a user can delete characters from the input
-        // and re-select the same option — the input should update immediately without blur.
-        // MUI fires reason='reset' (not 'selectOption') for this case.
-        // - event !== null: MUI's useEffect also fires reason='reset' with event=null for
-        //   programmatic value resets, which should not update the filter.
-        // - doesQueryMatchSelection: when a create option is clicked, MUI fires reason='reset'
-        //   with the create label as newInputValue, which should not override the user's text.
         if (
             reason === 'reset' &&
             event !== null &&
@@ -588,17 +503,13 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const filterOptions = (options, params) => {
         let filteredOptions =
-            isFromReference || // When used inside a reference, AutocompleteInput shouldn't do the filtering as it's done by the reference input
-            matchSuggestion || // When using element as optionText (and matchSuggestion), options are filtered by getSuggestions, so they shouldn't be filtered here
-            limitChoicesToValue // When limiting choices to values (why? it's legacy!), options are also filtered by getSuggestions, so they shouldn't be filtered here
+            isFromReference || matchSuggestion || limitChoicesToValue
                 ? options
-                : defaultFilterOptions(options, params); // Otherwise, we let Material UI's Autocomplete do the filtering
+                : defaultFilterOptions(options, params);
 
-        // add create option if necessary
         const { inputValue } = params;
         if (onCreate || create) {
             if (inputValue === '' && filterValue === '' && createLabel) {
-                // create option with createLabel
                 filteredOptions = filteredOptions.concat(getCreateItem(''));
             } else if (
                 inputValue &&
@@ -606,7 +517,6 @@ If you provided a React element for the optionText prop, you must also provide t
                 !doesQueryMatchSuggestion(filterValue)
             ) {
                 filteredOptions = filteredOptions.concat(
-                    // create option with createItemLabel
                     getCreateItem(inputValue)
                 );
             }
@@ -617,10 +527,8 @@ If you provided a React element for the optionText prop, you must also provide t
 
     const handleAutocompleteChange = useCallback(
         (event: any, newValue: any, reason: AutocompleteChangeReason) => {
-            // This prevents auto-submitting a form inside a dialog passed to the `create` prop
             event.preventDefault();
             if (reason === 'createOption') {
-                // When users press the enter key after typing a new value, we can handle it as if they clicked on the create option
                 handleChangeWithCreateSupport(
                     getCreateItem(
                         Array.isArray(newValue)
@@ -660,22 +568,15 @@ If you provided a React element for the optionText prop, you must also provide t
     const renderHelperText = !!fetchError || helperText !== false || invalid;
 
     const handleInputRef = useForkRef(field.ref, TextFieldProps?.inputRef);
-    // isPending is true: there's no cached data and no query attempt was finished yet
-    // isPaused is true: the query was paused (e.g. due to a network issue)
-    // Both true: we're offline, have no data to show
-    // If the component that provides the ChoicesContext does not handle this case, we should should render the offline element
     if (isPending && isPaused && offline !== false && offline !== undefined) {
-        return offline;
+        return offline as any;
     }
 
     const renderChips = (value, getProps: (args: { index: number }) => any) =>
         value.map((option, index) => {
-            // We have to extract the key because react 19 does not allow to spread the key prop
             const { key, ...chipProps } = getProps({ index });
-            // @ts-expect-error slotProps do not yet exist in MUI v5
             const mergedSlotProps = props.slotProps?.chip
-                ? // @ts-expect-error slotProps do not yet exist in MUI v5
-                  props.slotProps.chip
+                ? props.slotProps.chip
                 : props.ChipProps;
             return (
                 <Chip
@@ -725,16 +626,13 @@ If you provided a React element for the optionText prop, you must also provide t
                         ...params.InputProps,
                         ...TextFieldProps?.InputProps,
                     };
-                    // @ts-expect-error slotProps do not yet exist in MUI v5
                     const mergedSlotProps = TextFieldProps?.slotProps
                         ? {
                               slotProps: {
-                                  // @ts-expect-error slotProps do not yet exist in MUI v5
                                   ...TextFieldProps?.slotProps,
                                   input: {
                                       readOnly,
                                       ...params.InputProps,
-                                      // @ts-expect-error slotProps do not yet exist in MUI v5
                                       ...TextFieldProps?.slotProps?.input,
                                   },
                               },
@@ -778,15 +676,17 @@ If you provided a React element for the optionText prop, you must also provide t
                             {...mergedSlotProps}
                             size={size}
                             inputRef={handleInputRef}
+                            inputProps={{
+                                ...params.inputProps,
+                                required: isRequired,
+                                ...TextFieldProps?.inputProps,
+                            }}
                         />
                     );
                 }}
                 multiple={multiple}
                 {...(muiMajor >= 7
-                    ? // In MUI v7, renderValue replaces renderTags, but it is also
-                      // called in single-selection mode with a non-array value.
-                      // renderChips expects an array, so only use it when multiple.
-                      multiple
+                    ? multiple
                         ? { renderValue: renderChips }
                         : {}
                     : { renderTags: renderChips })}
@@ -825,15 +725,13 @@ If you provided a React element for the optionText prop, you must also provide t
                 onBlur={finalOnBlur}
                 onInputChange={handleInputChange}
                 renderOption={(props, record: RaRecord) => {
-                    // We have to extract the key because react 19 does not allow to spread the key prop
                     const { key: ignoredKey, ...rest } = props;
-                    // We don't use MUI key which is generated from the option label because we may have options with the same label but with different values
                     const key = getChoiceValue(record);
                     const optionLabel = getOptionLabel(record, true);
 
                     return (
                         <li key={key} {...rest}>
-                            {optionLabel === '' ? ' ' : optionLabel}
+                            {optionLabel === '' ? ' ' : optionLabel}
                         </li>
                     );
                 }}
@@ -864,7 +762,6 @@ const StyledAutocomplete = styled(Autocomplete, {
         },
 }));
 
-// @ts-ignore
 export interface AutocompleteInputProps<
     OptionType extends any = RaRecord,
     Multiple extends boolean | undefined = false,
@@ -891,21 +788,15 @@ export interface AutocompleteInputProps<
     inputText?: (option: any) => string;
     offline?: ReactNode;
     onChange?: (
-        // We can't know upfront what the value type will be
         value: Multiple extends true ? any[] : any,
-        // We return an empty string when the input is cleared in single mode
         record: Multiple extends true ? OptionType[] : OptionType | ''
     ) => void;
     setFilter?: (value: string) => void;
     shouldRenderSuggestions?: any;
-    // Source is optional as AutocompleteInput can be used inside a ReferenceInput that already defines the source
     source?: string;
     TextFieldProps?: TextFieldProps;
 }
 
-/**
- * Returns the selected choice (or choices if multiple) by matching the input value with the choices.
- */
 const useSelectedChoice = <
     OptionType extends any = RaRecord,
     Multiple extends boolean | undefined = false,
@@ -931,8 +822,6 @@ const useSelectedChoice = <
         () => getSelectedItems(choices, value, optionValue, multiple)
     );
 
-    // As the selected choices are objects, we want to ensure we pass the same
-    // reference to the Autocomplete as it would reset its filter value otherwise.
     useEffect(() => {
         const newSelectedItems = getSelectedItems(
             choices,
@@ -958,9 +847,9 @@ const useSelectedChoice = <
 
 const getSelectedItems = (
     choices: RaRecord[] = [],
-    value,
+    value: any,
     optionValue = 'id',
-    multiple
+    multiple: any
 ) => {
     if (multiple) {
         return (Array.isArray(value ?? []) ? value : [value])
@@ -1003,7 +892,7 @@ const areSelectedItemsEqual = (
     );
 };
 
-const DefaultFilterToQuery = searchText => ({ q: searchText });
+const DefaultFilterToQuery = (searchText: string) => ({ q: searchText });
 const defaultOffline = <Offline variant="inline" />;
 
 declare module '@mui/material/styles' {

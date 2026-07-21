@@ -63,8 +63,7 @@ export const FileInput = (inProps: FileInputProps) => {
     const { onDrop: onDropProp } = options;
     const translate = useTranslate();
 
-    // turn a browser dropped file structure into expected structure
-    const transformFile = file => {
+    const transformFile = (file: any) => {
         if (!(file instanceof File)) {
             return file;
         }
@@ -109,7 +108,7 @@ export const FileInput = (inProps: FileInputProps) => {
     const { error, invalid } = fieldState;
     const files = value ? (Array.isArray(value) ? value : [value]) : [];
 
-    const onDrop = (newFiles, rejectedFiles, event) => {
+    const onDrop = (newFiles: any, rejectedFiles: any, event: any) => {
         const updatedFiles = multiple ? [...files, ...newFiles] : [...newFiles];
 
         if (multiple) {
@@ -125,7 +124,7 @@ export const FileInput = (inProps: FileInputProps) => {
         }
     };
 
-    const onRemove = file => async () => {
+    const onRemove = (file: any) => async () => {
         if (validateFileRemoval) {
             try {
                 await validateFileRemoval(file);
@@ -135,7 +134,7 @@ export const FileInput = (inProps: FileInputProps) => {
         }
         if (multiple) {
             const filteredFiles = files.filter(
-                stateFile => !shallowEqual(stateFile, file)
+                (stateFile: any) => !shallowEqual(stateFile, file)
             );
             onChange(filteredFiles as any);
             onBlur();
@@ -208,6 +207,7 @@ export const FileInput = (inProps: FileInputProps) => {
                         id={id}
                         name={id}
                         {...getInputProps({
+                            required: isRequired,
                             ...inputPropsOptions,
                         })}
                     />
@@ -287,7 +287,7 @@ export type FileInputProps = CommonInputProps & {
     placeholder?: ReactNode;
     removeIcon?: ComponentType<SvgIconProps>;
     inputProps?: any;
-    validateFileRemoval?(file): boolean | Promise<boolean>;
+    validateFileRemoval?(file: any): boolean | Promise<boolean>;
     sx?: SxProps<Theme>;
 };
 

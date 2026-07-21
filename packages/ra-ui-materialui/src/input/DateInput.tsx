@@ -150,7 +150,6 @@ export const DateInput = (props: DateInputProps) => {
             defaultValue={format(initialDefaultValueRef.current)}
             key={inputKey}
             type="date"
-            required={isRequired}
             onChange={handleChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -182,6 +181,10 @@ export const DateInput = (props: DateInputProps) => {
             InputLabelProps={defaultInputLabelProps}
             {...sanitizeInputRestProps(rest)}
             {...(muiMajor >= 6 ? { slotProps: mergedSlotProps } : {})}
+            inputProps={{
+                required: isRequired,
+                ...rest.inputProps,
+            }}
         />
     );
 };

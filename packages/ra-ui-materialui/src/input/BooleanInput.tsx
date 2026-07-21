@@ -87,11 +87,15 @@ export const BooleanInput = (props: BooleanInputProps) => {
                         onChange={handleChange}
                         onFocus={onFocus}
                         checked={Boolean(field.value)}
-                        required={isRequired}
                         {...sanitizeInputRestProps(rest)}
                         {...options}
                         disabled={disabled || readOnly}
                         readOnly={readOnly}
+                        inputProps={{
+                            required: isRequired,
+                            ...rest.inputProps,
+                            ...options.inputProps,
+                        }}
                     />
                 }
                 label={
